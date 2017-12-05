@@ -38,6 +38,7 @@ class ClientSendThread(threading.Thread):
         tcpsock2.listen(1)
         (conn2,addr) = tcpsock2.accept()
         print("Connected", conn2.fileno(), self.socket.fileno())
+        name = ''
         for z in userfdmap:
             zi = z.partition(" ")
             if str(zi[2]) == str(self.socket.fileno()):
@@ -112,18 +113,18 @@ def send(self,command):
     contentinner = content[2].partition(" ") 
     sendmsg = self.user_name + ": " + contentinner[2] 
     receiver = contentinner[0]
-    if self.user_name in blocked_conns[receiver]:
-        msg = 'SERVER: You are currently blocked by ' + receiver + '.'
-        clientMessages[self.socket.fileno()].put(msg)
-    else:    
+    try:
+        if self.user_name in blocked_conns[receiver]:
+            msg = 'SERVER: You are currently blocked by ' + receiver + '.'
+            clientMessages[self.socket.fileno()].put(msg)
+    except KeyError:
         if receiver not in activeUsers:
             msg = "SERVER: User " + receiver + " not online appending to his file."
             lock.acquire()
             clientMessages[self.socket.fileno()].put(msg)
             lock.release()
             receiver = receiver + 'inbox'
-            writeFile(sendmsg, receiver)
-            
+            writeFile(sendmsg, receiver)       
         else:
             for z in userfdmap:
                 zi = z.partition(" ")
@@ -230,25 +231,24 @@ def inbox(self, command):
     filename = self.user_name + 'inbox' + '.txt'
     try: 
         file = open(filename, "r")
+        file.seek(0)
+        for msg in file:
+            sendmsg = sendmsg + "\n" + msg
+        lock.acquire()
+        clientMessages[self.socket.fileno()].put(sendmsg)    
+        lock.release()
+    
     except IOError:
         sendmsg = "SERVER: Inbox empty."
         clientMessages[self.socket.fileno()].put(sendmsg)
-        
-    file.seek(0)
-    for msg in file:
-        sendmsg = sendmsg + "\n" + msg
-    lock.acquire()
-    clientMessages[self.socket.fileno()].put(sendmsg)    
-    lock.release()
-            
        
 def whoon(self, command):                    
     sendmsg = 'SERVER: USERS ONLINE: '
     for z in activeUsers:
         if z != self.user_name:
-            sendmsg = sendmsg + ' ' + z
+            sendmsg = sendmsg + '|' + z
     lock.acquire() 
-    clientMessages[self.socket.fileno()].put(sendstr)
+    clientMessages[self.socket.fileno()].put(sendmsg)
     lock.release()
     
 def block(self, command):

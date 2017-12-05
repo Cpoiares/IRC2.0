@@ -63,8 +63,13 @@ try:
 except socket.error as err:
     print ("ERROR: Cannot create client side socket:")
     exit(1)
+try:   
+    clientSocket.connect((serverHost,serverPort))
+except socket.error as err:
+    print ("ERROR: Cannot connect to chat server", err)
+    print ("Server not online!\n * Exiting... Goodbye!*")
+    exit(1)
     
-clientSocket.connect((serverHost,serverPort))
 ReadingThread = ClientListener(clientSocket)
 ReadingThread.daemon = True
 SendingThread = ClientSender(clientSocket)
@@ -85,11 +90,6 @@ try:
         if exit_control:
             exit(1)
             
-except socket.error as err:
-    print ("ERROR: Cannot connect to chat server", err)
-    print ("* Exiting... Goodbye! *")
-    exit(1)
-
 except KeyboardInterrupt:
     print ("\nINFO: KeyboardInterrupt")
     print ("* Closing all sockets and exiting chat server... Goodbye! *")
