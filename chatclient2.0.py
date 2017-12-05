@@ -1,8 +1,17 @@
 import socket
 import select 
 import threading
+import os
 
 
+exitLock = threading.Lock()
+exit_control = False
+threads = []
+serverHost = "127.0.0.1"
+serverPort = 9000
+serverPort2 = 8000
+BUFFER = 1024
+online = False
     
 class ClientSender(threading.Thread):
     def __init__(self, socket):
@@ -16,10 +25,9 @@ class ClientSender(threading.Thread):
             sendcommand = input()
             self.socket.send(sendcommand.encode())
             if (sendcommand == "quit()"):
-                exitLock.acquire()
-                exit_control = True
-                exitLock.release()
-                exit(1)
+                quit()
+                os._exit(1)
+            
     
     
 class ClientListener(threading.Thread):
@@ -27,36 +35,27 @@ class ClientListener(threading.Thread):
         threading.Thread.__init__(self)
         self.socket = socket
         print("New Listening Thread")
-        
-        
-        
+     
     def run(self):
         s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s2.connect((serverHost, serverPort2))
         welcomemsg = s2.recv(BUFFER)
         print(welcomemsg)
-        while True:
+        while not exit_control:
             try:
-                if not exit_control:
-                    message = s2.recv(BUFFER).decode()
-                    if message:
-                        print(message)
-                else:
-                    threading._shutdown()
-            except socket.timout as err:
-                print ("\nERROR: receive timed out 3 second limit \n")
+                message = s2.recv(BUFFER).decode()
+                if message:
+                    print(message)
+                
+            except socket.error as err:
+                print ("\nCannot receive from socket\nBroken Socket\n")
+        os._exit(1)
 
-
-
-exit_control = False
-exitLock = threading.Lock()
-threads = []
-serverHost = "127.0.0.1"
-serverPort = 9000
-serverPort2 = 8000
-BUFFER = 1024
-
-online = False
+def quit():
+    exitLock.acquire()
+    exit_control = True
+    exitLock.release()
+    clientSocket.close()   
 
 
 try:
@@ -79,15 +78,12 @@ try:
         user_name = input()
         clientSocket.send(user_name.encode())
         online = True
-        print('CLIENT: I guess ur logged.\nLogged as ' +user_name + '.\n')
+        print('CLIENT: I guess ur logged.\nLogged as ' + user_name + '.\n')
     ReadingThread.start()
     SendingThread.start()
     while True:
-        for t in threads:
-            t.join(2)
-            if not t.isAlive():
-                break
-            
+        if exit_control:
+            exit(1)
             
 except socket.error as err:
     print ("ERROR: Cannot connect to chat server", err)
@@ -97,5 +93,10 @@ except socket.error as err:
 except KeyboardInterrupt:
     print ("\nINFO: KeyboardInterrupt")
     print ("* Closing all sockets and exiting chat server... Goodbye! *")
+    exitLock.acquire()
+    exit_control = True
+    exitLock.release()
+    threads[0].join()
+    threads[1].join()
     clientSocket.close()
-    exit()
+    exit(0)
