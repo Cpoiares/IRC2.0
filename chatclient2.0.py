@@ -93,7 +93,6 @@ except KeyboardInterrupt:
     exitLock.acquire()
     exit_control = True
     exitLock.release()
-    threads[0].join()
-    threads[1].join()
-    clientSocket.close()
+    if threads[0].join() and threads[1].join():
+        clientSocket.close()
     exit(0)

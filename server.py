@@ -29,8 +29,8 @@ userfdmap = []
 blocked_conns = {}
 client_threads = {}
 
-
-class ClientSendThread(threading.Thread):
+# ---------------------Thread connectada ao send port do servidor "ClientSendThread"
+class SendingThread(threading.Thread):
     def __init__(self, socket):
         threading.Thread.__init__(self)
         self.socket = socket
@@ -64,7 +64,7 @@ class ClientSendThread(threading.Thread):
             except KeyError: 
                 pass
 
-class ClientReadThread(threading.Thread):
+class ReadingThread(threading.Thread):
     def __init__(self, socket, ip, port, user_name):
         threading.Thread.__init__(self)
         self.socket = socket
@@ -362,9 +362,9 @@ while True:
         login = True
         lock.release()
 
-    ReadingThread = ClientReadThread(conn, HOST, PORT, user_name)
+    ReadingThread = ReadingThread(conn, HOST, PORT, user_name)
     ReadingThread.daemon = True
-    SendingThread = ClientSendThread(conn)
+    SendingThread = SendingThread(conn)
     SendingThread.daemon = True            
   
     SendingThread.start()
