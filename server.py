@@ -18,7 +18,6 @@ PORT = 9000
 PORT2 = 8000
 BUFFER = 1024
 
-exitLock = threading.Lock()
 lock = threading.Lock()
 groupLock = threading.Lock()
 clientMessages = {}
@@ -44,7 +43,13 @@ class ClientSendThread(threading.Thread):
             zi = z.partition(" ")
             if str(zi[2]) == str(self.socket.fileno()):
                 name = zi[0]
-         
+        checkinbox = name + 'inbox.txt'
+        if os.path.exists(checkinbox) == True:
+            message = 'You have unread messages! Enter inbox() for see them.' 
+            lock.acquire()
+            clientMessages[self.socket.fileno()].put(message)
+            lock.release()
+            
         while True:
             try: 
                 if not clientMessages[self.socket.fileno()].empty():
@@ -55,7 +60,7 @@ class ClientSendThread(threading.Thread):
                     conn2.send(message.encode())
                     write = message.partition(" ")
                     if write[0] != 'SERVER:':
-                        message = 'RECEIVED: ' + message
+                        message = 'RECEIVED: ' + message + '\0'
                         writeFile(message, name)
                     
             except queue.Empty:
@@ -81,7 +86,7 @@ class ClientReadThread(threading.Thread):
             try:
                 command = self.socket.recv(BUFFER).decode()
             except socket.error:
-                print(self.user_name+ 's socket is not currently open, exiting...')
+                print(self.user_name+ 's socket is not currently open, exiting...\0')
                 quit(self)
             if command != '':
                 
@@ -105,8 +110,8 @@ class ClientReadThread(threading.Thread):
                     quit(self) 
                 
                 else:
-                    msg = "SERVER: Invalid command, enter help() to list the commands"
-                    clientMessages[self.socket.receiver()].put(msg)
+                    msg = 'SERVER: Invalid command, enter help() to list the commands'
+                    clientMessages[self.socket.fileno()].put(msg)
                     
 def send(self,command):
     content = command.partition(" ")
@@ -259,6 +264,11 @@ def whoon(self, command):
     
 def block(self, command):
     user = command.partition(" ")
+    if user[2] == self.user_name:
+        sendmsg = 'Do you really wanna do that.'
+        lock.acquires()
+        clientMessages[self.socket.fileno()].put(sendmsg)
+        lock.release()
     sendmsg = 'SERVER: You just blocked '+ user[2] + ' sucessfully!'
     lock.acquire()
     blocked_conns[self.user_name].append(user[2])
@@ -331,7 +341,7 @@ def quit(self):
 
 tcpsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcpsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
-tcpsock.bind((HOST, PORT))
+tcpsock.bind(('', PORT))
 tcpsock2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcpsock2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 tcpsock2.bind(('', PORT2))
@@ -354,11 +364,8 @@ while True:
         userfdmap.append(userinfo)
         blocked_conns[user_name] = []
         clientMessages[fd] = q
-        msg = 'SERVER: Welcome to the server ' + user_name + ' If you need anything just type help()'
-        clientMessages[fd].put(msg) 
-        if os.path.exists(user_name + 'inbox.txt') == True:
-            sendmsg = "UNREAD MESSAGES -> TYPE inbox()"  
-            clientMessages[fd].put(msg)
+        msg = 'SERVER: Welcome to the server ' + user_name + ' If you need anything just type help(). \n'
+        clientMessages[fd].put(msg)
         login = True
         lock.release()
 
