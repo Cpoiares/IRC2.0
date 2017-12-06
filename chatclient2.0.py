@@ -3,7 +3,7 @@ import select
 import threading
 import os
 
-
+printLock = threading.Lock()
 exitLock = threading.Lock()
 exit_control = False
 threads = []
@@ -17,24 +17,25 @@ class ClientSender(threading.Thread):
     def __init__(self, socket):
         threading.Thread.__init__(self)
         self.socket = socket 
-        print("New Sender Thread")
     
     def run(self):
         while True:
-            print("COMMAND:")
-            sendcommand = input()
-            self.socket.send(sendcommand.encode())
-            if (sendcommand == "quit()"):
+            try:
+                print("COMMAND: ")
+                sendcommand = input()
+                self.socket.send(sendcommand.encode())
+                if (sendcommand == "quit()"):
+                    quit()
+                    os._exit(1)
+            except socket.error:
+                print('Server was knocked out\n Logging out.')
                 quit()
                 os._exit(1)
-            
-    
     
 class ClientListener(threading.Thread):
     def __init__(self, socket):
         threading.Thread.__init__(self)
         self.socket = socket
-        print("New Listening Thread")
      
     def run(self):
         s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,13 +43,9 @@ class ClientListener(threading.Thread):
         welcomemsg = s2.recv(BUFFER)
         print(welcomemsg)
         while not exit_control:
-            try:
-                message = s2.recv(BUFFER).decode()
-                if message:
-                    print(message)
-                
-            except socket.error as err:
-                print ("\nCannot receive from socket\nBroken Socket\n")
+            message = s2.recv(BUFFER).decode()
+            if message:
+                print(message)    
         os._exit(1)
 
 def quit():
@@ -79,11 +76,11 @@ threads.append(SendingThread)
                 
 try:
     if online == False:
-        print('CLIENT: Enter your username:')
+        print('SERVER: Enter your username: ')
         user_name = input()
         clientSocket.send(user_name.encode())
         online = True
-        print('CLIENT: I guess ur logged.\nLogged as ' + user_name + '.\n')
+        print('SERVER: Logged in as ' + user_name + '.\n')
     ReadingThread.start()
     SendingThread.start()
     while True:

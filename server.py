@@ -5,6 +5,7 @@ import threading
 import queue
 import _thread
 import errno
+import string
 import os.path
 import time
 from socketserver import ThreadingMixIn
@@ -43,10 +44,7 @@ class ClientSendThread(threading.Thread):
             zi = z.partition(" ")
             if str(zi[2]) == str(self.socket.fileno()):
                 name = zi[0]
-        if os.path.exists(name + 'inbox.txt') == True:
-            sendmsg = "You got unread messages! Type inbox() to make them pop on the screen.\n"
-            conn2.send(sendmsg.encode())
-            
+         
         while True:
             try: 
                 if not clientMessages[self.socket.fileno()].empty():
@@ -61,7 +59,6 @@ class ClientSendThread(threading.Thread):
                         writeFile(message, name)
                     
             except queue.Empty:
-                chat = "none"
                 time.sleep(2)
                 
             except KeyError: 
@@ -83,7 +80,6 @@ class ClientReadThread(threading.Thread):
             e = False
             try:
                 command = self.socket.recv(BUFFER).decode()
-                
             except socket.error:
                 print(self.user_name+ 's socket is not currently open, exiting...')
                 quit(self)
@@ -107,6 +103,10 @@ class ClientReadThread(threading.Thread):
                     printConv(self)
                 elif 'quit()' == command:
                     quit(self) 
+                
+                else:
+                    msg = "SERVER: Invalid command, enter help() to list the commands"
+                    clientMessages[self.socket.receiver()].put(msg)
                     
 def send(self,command):
     content = command.partition(" ")
@@ -115,11 +115,15 @@ def send(self,command):
     receiver = contentinner[0]
     try:
         if self.user_name in blocked_conns[receiver]:
-            msg = 'SERVER: You are currently blocked by ' + receiver + '.'
+            msg = 'SERVER: Blocked by ' + receiver + '.'
             clientMessages[self.socket.fileno()].put(msg)
+        else:
+            msg = ('SENT: ' + receiver.upper())
+            clientMessages[self.socket.fileno()].put(msg)
+            clientMessages[receiver].put(msg)
     except KeyError:
         if receiver not in activeUsers:
-            msg = "SERVER: User " + receiver + " not online appending to his file."
+            msg = "SERVER: User " + receiver + " not online. Sending note."
             lock.acquire()
             clientMessages[self.socket.fileno()].put(msg)
             lock.release()
@@ -143,7 +147,7 @@ def group(self, command):
     if group_command[0] == "create":
         group_name = group_command[2]
         group_users = [self.user_name]
-        sendmsg = "SERVER: New group " + group_name + " created sucessfully."
+        sendmsg = "SERVER: " + group_name + " created sucessfully."
         clientMessages[self.socket.fileno()].put(sendmsg)
         groupLock.acquire()
         groups.append(group_command[2])
@@ -157,13 +161,13 @@ def group(self, command):
                 groupLock.acquire()
                 groupchats[group_name[0]].append(group_name[2])                   
                 groupLock.release()
-                sendmsg = "SERVER: User " + group_name[2] + " has been added to " + group_name[0] + " has asked. "
+                sendmsg = "SERVER: User " + group_name[2] + " has been added to " + group_name[0] + " ."
                 lock.acquire()
                 clientMessages[self.socket.fileno()].put(sendmsg)
                 for z in userfdmap:
                     zi = z.partition(" ")
                     if zi[0] == group_name[2]:
-                        sendmsg = "SERVER: You been added to " + group_name[0] + " by " + self.user_name
+                        sendmsg = "SERVER: You have been added to " + group_name[0] + " by " + self.user_name
                         clientMessages[int(zi[2])].put(sendmsg)
                 lock.release()
             else:
@@ -222,10 +226,11 @@ def group(self, command):
                     p = p + 'inbox'
                     writeFile(sendmsg, p)
         else:
-            sendmsg = "SERVER: You are not part of " + group_command[0] + " get invited from a group user."
+            sendmsg = "SERVER: You are not part of " + group_command[0] + " . Get invited from a group user."
             lock.acquire()
             clientMessages[self.socket.fileno()].put(sendmsg)
             lock.release()
+            
 def inbox(self, command):
     sendmsg = ""
     filename = self.user_name + 'inbox' + '.txt'
@@ -237,6 +242,7 @@ def inbox(self, command):
         lock.acquire()
         clientMessages[self.socket.fileno()].put(sendmsg)    
         lock.release()
+        os.remove(filename)
     
     except IOError:
         sendmsg = "SERVER: Inbox empty."
@@ -273,7 +279,7 @@ def unblock(self, command):
         lock.release()
     
 def help(self):
-    sendmsg = "SERVER: \n\nSEND COMMANDS:\nsend user_name msg\n\nWHOON:\nwhoon()\n\nQUIT:\nquit()\n\nGROUPCHAT COMMANDS:\ngroup() create groupname\ngroup() add groupname username\ngroup() groupname msg\n \nLISTING MESSAGES: Unread Messages->ninbox()\nAll conversations->list()\n \nBLOCK: block() username | unblock() username\n"
+    sendmsg = "SERVER: \nSEND COMMANDS:\nsend user_name msg\n\nWHOON:\nwhoon()\n\nQUIT:\nquit()\n\nGROUPCHAT COMMANDS:\ngroup() create groupname\ngroup() add groupname username\ngroup() groupname msg\n \nLISTING MESSAGES: Unread Messages->ninbox()\nAll conversations->list()\n \nBLOCK: block() username | unblock() username\n"
     clientMessages[self.socket.fileno()].put(sendmsg)   
     
 def printConv(self):
@@ -289,7 +295,7 @@ def printConv(self):
     sendmsg = ""
     file.seek(0)
     for msg in file:
-        sendmsg = sendmsg + "\n" + msg
+        sendmsg = sendmsg + msg
     lock.acquire()
     clientMessages[self.socket.fileno()].put(sendmsg)    
     lock.release()  
@@ -302,6 +308,11 @@ def writeFile(sendmsg, name):
     file = open(filename, "a+")
     file.write(sendmsg)
     file.write('\n')
+    lines = file.readlines()
+    format = "%H:%M:%S"
+    sort_lines = sorted(lines, key = lambda line: time.strftime(line.partition(" ")[0], format, reverse = True))
+    for line in sort_lines:
+        file.write(line)
     file.close()
     
 def quit(self):
@@ -309,6 +320,9 @@ def quit(self):
     lock.acquire()                   
     clientMessages.pop(self.socket.fileno())
     activeUsers.remove(self.user_name)
+    for z in userfdmap:
+        if str(self.socket.fileno()) in userfdmap:
+            userfdmap.remove(z)
     client_threads[self.socket.fileno()][0].join()
     client_threads[self.socket.fileno()][1].join()
     lock.release()
@@ -331,9 +345,6 @@ while True:
     user_name = ''
     fd = conn.fileno()
     q = queue.Queue()
-
-
-
     print('SERVER: Welcome ',conn.fileno())      
     user_name = conn.recv(BUFFER).decode()
     if user_name != '':
@@ -344,7 +355,10 @@ while True:
         blocked_conns[user_name] = []
         clientMessages[fd] = q
         msg = 'SERVER: Welcome to the server ' + user_name + ' If you need anything just type help()'
-        clientMessages[fd].put(msg)   
+        clientMessages[fd].put(msg) 
+        if os.path.exists(user_name + 'inbox.txt') == True:
+            sendmsg = "UNREAD MESSAGES -> TYPE inbox()"  
+            clientMessages[fd].put(msg)
         login = True
         lock.release()
 
