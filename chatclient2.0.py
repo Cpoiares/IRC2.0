@@ -23,10 +23,13 @@ class ClientSender(threading.Thread):
             try:
                 print("COMMAND: ")
                 sendcommand = input()
-                self.socket.send(sendcommand.encode())
-                if (sendcommand == "quit()"):
-                    quit()
-                    os._exit(1)
+                if sendcommand == 'clear' or sendcommand == 'clc':
+                    os.system('clear')
+                else:    
+                    self.socket.send(sendcommand.encode())
+                    if (sendcommand == "quit()"):
+                        quit()      
+                        os._exit(1)
             except socket.error:
                 print('Server was knocked out\n Logging out.')
                 quit()
