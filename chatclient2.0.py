@@ -5,8 +5,11 @@ import os
 
 printLock = threading.Lock()
 exitLock = threading.Lock()
+
 exit_control = False
-threads = []
+
+threads = [ ]
+
 serverHost = "127.0.0.1"
 serverPort = 9000
 serverPort2 = 8000
