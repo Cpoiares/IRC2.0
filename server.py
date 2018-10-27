@@ -54,7 +54,7 @@ class ClientSendThread(threading.Thread):
             
         while True:
             try: 
-                if not clientMessages[self.socket.fileno()].empty(): # tenta ir buscar mensagem a message queue do cliente 
+                if not clientMessages[self.socket.fileno()].empty(): 
                     lock.acquire()
                     message = clientMessages.get(self.socket.fileno()).get(False)
                     lock.release()
