@@ -30,7 +30,9 @@ userfdmap = [] # User fd lista com os clientes str = 'user_name' + 'fd da socket
 blocked_conns = {} # Dicionario de conexoes bloqueadas
 client_threads = {} # dicionario de threads keys = socket.fd; values = id da thread
 banned_names = ['-send', '-group()', '-inbox()', '-help()', '-group()', '-create', '-remove', '-add'] # Nomes de grupos banidos
-
+     
+    
+    
 # ---------------------Thread connectada ao send port do servidor ---------------------
 class ClientSendThread(threading.Thread):
     def __init__(self, socket, name):
