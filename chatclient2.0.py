@@ -3,7 +3,9 @@ import select
 import threading
 import os
 
+
 printLock = threading.Lock()
+
 exitLock = threading.Lock()
 
 exit_control = False
