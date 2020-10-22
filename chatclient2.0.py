@@ -63,44 +63,45 @@ def quit():
     clientSocket.close()   
 
 
-try:
-    clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-except socket.error as err:
-    print ("ERROR: Cannot create client side socket:")
-    exit(1)
-try:   
-    clientSocket.connect((serverHost,serverPort))
-except socket.error as err:
-    print ("ERROR: Cannot connect to chat server", err)
-    print ("Server not online!\n * Exiting... Goodbye!*")
-    exit(1)
-    
-ReadingThread = ClientListener(clientSocket)
-ReadingThread.daemon = True
-SendingThread = ClientSender(clientSocket)
-SendingThread.daemon = True
-threads.append(ReadingThread)
-threads.append(SendingThread)
-                
-try:
-    if online == False:
-        print('SERVER: Enter your username: ')
-        user_name = input()
-        clientSocket.send(user_name.encode())
-        online = True
-        print('SERVER: Logged in as ' + user_name + '.\n')
-    ReadingThread.start()
-    SendingThread.start()
-    while True:
-        if exit_control:
-            exit(1)
-            
-except KeyboardInterrupt:
-    print ("\nINFO: KeyboardInterrupt")
-    print ("* Closing all sockets and exiting chat server... Goodbye! *")
-    exitLock.acquire()
-    exit_control = True
-    exitLock.release()
-    if threads[0].join() and threads[1].join():
-        clientSocket.close()
-    exit(0)
+if __name__ == '__main__':
+    try:
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except socket.error as err:
+        print ("ERROR: Cannot create client side socket:")
+        exit(1)
+    try:   
+        clientSocket.connect((serverHost,serverPort))
+    except socket.error as err:
+        print ("ERROR: Cannot connect to chat server", err)
+        print ("Server not online!\n * Exiting... Goodbye!*")
+        exit(1)
+
+    ReadingThread = ClientListener(clientSocket)
+    ReadingThread.daemon = True
+    SendingThread = ClientSender(clientSocket)
+    SendingThread.daemon = True
+    threads.append(ReadingThread)
+    threads.append(SendingThread)
+
+    try:
+        if online == False:
+            print('SERVER: Enter your username: ')
+            user_name = input()
+            clientSocket.send(user_name.encode())
+            online = True
+            print('SERVER: Logged in as ' + user_name + '.\n')
+        ReadingThread.start()
+        SendingThread.start()
+        while True:
+            if exit_control:
+                exit(1)
+
+    except KeyboardInterrupt:
+        print ("\nINFO: KeyboardInterrupt")
+        print ("* Closing all sockets and exiting chat server... Goodbye! *")
+        exitLock.acquire()
+        exit_control = True
+        exitLock.release()
+        if threads[0].join() and threads[1].join():
+            clientSocket.close()
+        exit(0)
